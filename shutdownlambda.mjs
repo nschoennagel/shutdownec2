@@ -23,7 +23,8 @@ export const handler = async (event) => {
         ]
     });
     
-    const topicArn = '';
+    const topicArn = process.env.topic; 
+    console.log(topicArn); 
 
     // Create an SNS client
     const sns = new AWSSNS.SNS();
