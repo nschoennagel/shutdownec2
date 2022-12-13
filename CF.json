@@ -1,0 +1,305 @@
+{
+ "Resources": {
+  "ec2inform281B1E49": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "ec2inform"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkStack/ec2inform/Resource"
+   }
+  },
+  "checkrunningec2role04F1000B": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/AmazonSNSFullAccess"
+       ]
+      ]
+     },
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     },
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/AmazonEC2FullAccess"
+       ]
+      ]
+     }
+    ],
+    "RoleName": "checkrunningec2role"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkStack/checkrunningec2role/Resource"
+   }
+  },
+  "checkrunningec215FD97ED": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "import AWSEC2 from \"@aws-sdk/client-ec2\"; //https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-ec2/\nimport AWSSNS from \"@aws-sdk/client-sns\"; //https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-sns/index.html\n\n\nexport const handler = async (event) => {\n    // Create an EC2 client\n    const ec2 = new AWSEC2.EC2({ region: \"eu-west-1\" });\n    //const ec2 = new client.EC2();\n\n    // Get the current time\n    const now = new Date();\n\n    // Calculate the launch time threshold (two hours ago)\n    const maxstart = new Date(now.getTime() - 2 * 60 * 60 * 1000);\n\n    // Get a list of all the running instances\n    const result = await ec2.describeInstances({\n        Filters: [\n            {\n                Name: 'instance-state-name',\n                Values: ['running']\n            }\n        ]\n    });\n    \n    const topicArn = process.env.topic; \n    console.log(topicArn); \n\n    // Create an SNS client\n    const sns = new AWSSNS.SNS();\n\n\n    // Extract the instance IDs from the result\n    const instances = result.Reservations.flatMap(reservation => reservation.Instances);\n     \n    for (let instance of instances) {\n        console.log(\"running: \" +JSON.stringify(instance));\n        console.log(\"running: \" +instance.InstanceId + \" \" + instance.KeyName);\n        if (instance.LaunchTime < maxstart){\n            console.log(\"Start Time: \" +instance.LaunchTime);\n            console.log(\"Shutdown: \" +instance.InstanceId + \" \" + instance.KeyName);\n            let ids = [instance.InstanceId];\n            \n            // shutdown\n            await ec2.stopInstances({InstanceIds: ids});\n            \n            // Publish the message to the topic\n            await sns.publish({\n                TopicArn: topicArn,\n                Message: \"running EC2 instances: \"+ instance.InstanceId + \" \" + instance.KeyName +\" shutdown\",\n                Subject: \"Shutdown EC2 Instances in ProIT A\"\n            });\n        }\n    }\n    \n\n    return null; \n};"
+    },
+    "Role": {
+     "Fn::GetAtt": [
+      "checkrunningec2role04F1000B",
+      "Arn"
+     ]
+    },
+    "Environment": {
+     "Variables": {
+      "topic": {
+       "Ref": "ec2inform281B1E49"
+      }
+     }
+    },
+    "Handler": "index.handler",
+    "Runtime": "nodejs18.x"
+   },
+   "DependsOn": [
+    "checkrunningec2role04F1000B"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CdkStack/checkrunningec2/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02OTQ7CIBCFz+IeRm104bqJB0D3hgIm08KMKaALwt0tbUxcvS/vJ3kdnE9w2OlPlMZO0uMA5Za0mcRiPUqkCOXOLzSif9IKVaAOUBR717ymVXgdBquhXDOZhEwt+XGtQrnIeTbb4I97JotrRxBbB2Pcv48X6JZHY0SUc6aEwYHa9AuO1+iGrQAAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkStack/CDKMetadata/Default"
+   },
+   "Condition": "CDKMetadataAvailable"
+  }
+ },
+ "Conditions": {
+  "CDKMetadataAvailable": {
+   "Fn::Or": [
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "af-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-northwest-1"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "sa-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-2"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-2"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ }
+}
