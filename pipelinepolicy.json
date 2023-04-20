@@ -1,0 +1,24 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:CreateFunction",
+                "iam:GetRole",
+                "iam:PassRole",
+                "iam:DetachRolePolicy",
+                "sns:GetTopicAttributes",
+                "sns:DeleteTopic",
+                "lambda:GetFunction",
+                "sns:CreateTopic",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:AttachRolePolicy",
+                "lambda:DeleteFunction"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
